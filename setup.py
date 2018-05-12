@@ -15,7 +15,7 @@ setuptools.setup(
     author_email="swift@nion.com",
     description="Capture video from built-in camera using OpenCV.",
     packages=["nionswift_plugin.nionswift_video_capture"],
-    install_requires=[],
+    install_requires=['nionswift-instrumentation'],
     license='GPLv3',
     include_package_data=True,
     python_requires='~=3.5',
