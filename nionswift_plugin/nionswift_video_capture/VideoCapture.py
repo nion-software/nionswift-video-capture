@@ -90,7 +90,8 @@ class VideoCamera:
     def acquire_data(self):
         self.ready_event.wait()
         self.ready_event.clear()
-        data = self.buffer_ref[0].copy()
+        raw_data = self.buffer_ref[0]
+        data = numpy.copy(raw_data) if raw_data is not None else None
         self.done_event.set()
         return data
 
