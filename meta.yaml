@@ -1,6 +1,7 @@
 package:
   name: 'nionswift-video-capture'
   version: '0.2.3'
+  # NOTE: reset build number
 
 source:
   git_rev: 0.2.3
@@ -8,7 +9,7 @@ source:
 
 build:
   noarch: python
-  number: 0
+  number: 1
   script: python -m pip install --no-deps --ignore-installed .
   include_recipe: False
 
@@ -21,7 +22,6 @@ requirements:
     - python >=3.8
     - nionswift >=0.16.0,<0.17.0
     - nionswift-instrumentation >=0.20.0,<0.21.0
-    - opencv
 
 test:
   imports:
