@@ -1,6 +1,10 @@
 Changelog (nionswift-video-capture)
 ===================================
 
+0.2.5 (2022-12-08)
+------------------
+- Update compatibility requirement for instrumentation kit.
+
 0.2.4 (2022-09-14)
 ------------------
 - Make opencv an optional package.
