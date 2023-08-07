@@ -50,24 +50,28 @@ MAX_FRAME_RATE = 20  # frames per second
 MINIMUM_DUTY = 0.05  # seconds
 TIMEOUT = 5.0  # seconds
 
-def video_capture_thread(video_capture, buffer_ref, cancel_event, ready_event, done_event):
-
-    while not cancel_event.is_set():
-        start = time.time()
-        retval, image = video_capture.read()
-        if retval:
-            buffer_ref[0] = numpy.copy(image)
-            ready_event.set()
-            done_event.wait()
-            done_event.clear()
-            elapsed = time.time() - start
-            delay = max(1.0/MAX_FRAME_RATE - elapsed, MINIMUM_DUTY)
-            cancel_event.wait(delay)
-        else:
-            buffer_ref[0] = None
-            ready_event.set()
-
-    video_capture.release()
+def video_capture_thread(source_url, buffer_ref, cancel_event, ready_event, done_event):
+    try:
+        video_capture = cv2.VideoCapture(source_url)
+        try:
+            while not cancel_event.is_set():
+                start = time.time()
+                retval, image = video_capture.read()
+                if retval:
+                    buffer_ref[0] = numpy.copy(image)
+                    ready_event.set()
+                    done_event.wait()
+                    done_event.clear()
+                    elapsed = time.time() - start
+                    delay = max(1.0/MAX_FRAME_RATE - elapsed, MINIMUM_DUTY)
+                    cancel_event.wait(delay)
+                else:
+                    buffer_ref[0] = None
+                    ready_event.set()
+        finally:
+            video_capture.release()
+    except Exception as e:
+        logging.exception(f"video capture thread exception {e}")
 
 
 class VideoCamera:
@@ -79,21 +83,22 @@ class VideoCamera:
         self.__source = settings.get("camera_index", settings.get("url"))
 
     def start_acquisition(self):
-        video_capture = cv2.VideoCapture(self.__source)
         self.buffer_ref = [None]
         self.cancel_event = threading.Event()
         self.ready_event = threading.Event()
         self.done_event = threading.Event()
-        self.thread = threading.Thread(target=video_capture_thread, args=(video_capture, self.buffer_ref, self.cancel_event, self.ready_event, self.done_event))
+        self.thread = threading.Thread(target=video_capture_thread, args=(self.__source, self.buffer_ref, self.cancel_event, self.ready_event, self.done_event))
         self.thread.start()
 
     def acquire_data(self):
-        self.ready_event.wait()
-        self.ready_event.clear()
-        raw_data = self.buffer_ref[0]
-        data = numpy.copy(raw_data) if raw_data is not None else None
-        self.done_event.set()
-        return data
+        if self.ready_event.wait(5.0):
+            self.ready_event.clear()
+            raw_data = self.buffer_ref[0]
+            data = numpy.copy(raw_data) if raw_data is not None else None
+            self.done_event.set()
+            return data
+        else:
+            raise RuntimeError(f"No frame received {self.__source}")
 
     def stop_acquisition(self):
         self.cancel_event.set()
