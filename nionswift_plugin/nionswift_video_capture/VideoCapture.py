@@ -12,32 +12,11 @@ import numpy
 from nion.ui import Declarative
 from nion.utils import Model
 from nion.utils import Registry
+from nion.utils import StructuredModel
 
+VideoFrameType = numpy.typing.NDArray[typing.Any]
 
 _ = gettext.gettext
-
-
-# does not currently work. to switch to this, copy the hardware source code out of
-# simulator mp and enable this. add necessary imports too.
-def video_capture_process(buffer, cancel_event, ready_event, done_event):
-    logging.debug("video capture process start")
-    video_capture = cv2.VideoCapture(0)
-    logging.debug("video capture: %s", video_capture)
-    #video_capture.open(0)
-    logging.debug("video capture open")
-    while not cancel_event.is_set():
-        retval, image = video_capture.read()
-        logging.debug("video capture read %s", retval)
-        if retval:
-            logging.debug("video capture image %s", image.shape)
-            with buffer.get_lock(): # synchronize access
-                buffer_array = numpy.frombuffer(buffer.get_obj(), dtype=numpy.uint8) # no data copying
-                buffer_array.reshape(image.shape)[:] = image
-            ready_event.set()
-            done_event.wait()
-            done_event.clear()
-        time.sleep(0.001)
-    video_capture.release()
 
 # informal measurements show read() takes approx 70ms (14fps)
 # on Macbook Pro. CEM 2013-July.
@@ -50,7 +29,7 @@ MAX_FRAME_RATE = 20  # frames per second
 MINIMUM_DUTY = 0.05  # seconds
 TIMEOUT = 5.0  # seconds
 
-def video_capture_thread(source_url, buffer_ref, cancel_event, ready_event, done_event):
+def video_capture_thread(source_url: str, buffer_ref: typing.List[typing.Optional[VideoFrameType]], cancel_event: threading.Event, ready_event: threading.Event, done_event: threading.Event) -> None:
     try:
         video_capture = cv2.VideoCapture(source_url)
         try:
@@ -76,31 +55,34 @@ def video_capture_thread(source_url, buffer_ref, cancel_event, ready_event, done
 
 class VideoCamera:
 
-    def __init__(self, source):
+    def __init__(self, camera_id: str, camera_name: str, source: str) -> None:
+        self.camera_id = camera_id
+        self.camera_name = camera_name
         self.__source = source
 
-    def update_settings(self, settings: dict) -> None:
+    def update_settings(self, settings: typing.Mapping[str, typing.Any]) -> None:
         self.__source = settings.get("camera_index", settings.get("url"))
 
-    def start_acquisition(self):
-        self.buffer_ref = [None]
+    def start_acquisition(self) -> None:
+        self.buffer_ref: typing.List[typing.Optional[VideoFrameType]] = [None]
         self.cancel_event = threading.Event()
         self.ready_event = threading.Event()
         self.done_event = threading.Event()
         self.thread = threading.Thread(target=video_capture_thread, args=(self.__source, self.buffer_ref, self.cancel_event, self.ready_event, self.done_event))
         self.thread.start()
 
-    def acquire_data(self):
+    def acquire_data(self) -> VideoFrameType:
         if self.ready_event.wait(5.0):
             self.ready_event.clear()
             raw_data = self.buffer_ref[0]
             data = numpy.copy(raw_data) if raw_data is not None else None
             self.done_event.set()
+            assert data is not None
             return data
         else:
             raise RuntimeError(f"No frame received {self.__source}")
 
-    def stop_acquisition(self):
+    def stop_acquisition(self) -> None:
         self.cancel_event.set()
         self.done_event.set()
         self.thread.join()
@@ -111,22 +93,22 @@ class VideoDeviceFactory:
     display_name = _("Video Capture")
     factory_id = "nionswift.video_capture"
 
-    def make_video_device(self, settings: dict) -> typing.Optional[VideoCamera]:
+    def make_video_device(self, settings: typing.Mapping[str, typing.Any]) -> typing.Optional[VideoCamera]:
         if settings.get("driver") == self.factory_id:
             source = settings.get("camera_index", settings.get("url"))
-            video_device = VideoCamera(source)
-            video_device.camera_id = settings.get("device_id")
-            video_device.camera_name = settings.get("name")
+            camera_id = settings["device_id"]
+            camera_name = settings["name"]
+            video_device = VideoCamera(camera_id, camera_name, source)
             return video_device
         return None
 
-    def describe_settings(self) -> typing.List[typing.Dict]:
+    def describe_settings(self) -> typing.Sequence[typing.Mapping[str, typing.Any]]:
         return [
             {'name': 'camera_index', 'type': 'int'},
             {'name': 'url', 'type': 'string'},
         ]
 
-    def get_editor_description(self):
+    def get_editor_description(self) -> typing.Any:
         u = Declarative.DeclarativeUI()
 
         url_field = u.create_line_edit(text="@binding(settings.url)", width=360)
@@ -137,22 +119,25 @@ class VideoDeviceFactory:
 
         return u.create_row(label_column, field_column, u.create_stretch(), spacing=12)
 
-    def create_editor_handler(self, settings):
+    def create_editor_handler(self, settings: typing.Optional[StructuredModel.ModelLike]) -> typing.Any:
 
-        class EditorHandler:
+        class EditorHandler(Declarative.Handler):
 
-            def __init__(self, settings):
+            def __init__(self, settings: typing.Optional[StructuredModel.ModelLike]) -> None:
+                super().__init__()
+
                 self.settings = settings
 
-                self.camera_index_model = Model.PropertyModel()
+                self.camera_index_model = Model.PropertyModel[int]()
 
-                def camera_index_changed(index):
+                def camera_index_changed(index: typing.Optional[int]) -> None:
                     formats = [None, 0, 1, 2, 3]
-                    self.settings.camera_index = formats[index]
+                    setattr(self.settings, "camera_index", formats[index or 0])
 
                 self.camera_index_model.on_value_changed = camera_index_changed
 
-                self.camera_index_model.value = self.settings.camera_index + 1 if self.settings.camera_index is not None else 0
+                camera_index = getattr(self.settings, "camera_index", None)
+                self.camera_index_model.value = camera_index + 1 if camera_index is not None else 0
 
         return EditorHandler(settings)
 
@@ -173,7 +158,7 @@ class VideoCaptureExtension:
     # required for Swift to recognize this as an extension class.
     extension_id = "nion.swift.extensions.video_capture"
 
-    def __init__(self, api_broker):
+    def __init__(self, api_broker: typing.Any) -> None:
         # grab the api object.
         api = api_broker.get_api(version="1", ui_version="1")
 
@@ -183,5 +168,5 @@ class VideoCaptureExtension:
 
     Registry.register_component(VideoDeviceFactory(), {"video_device_factory"})
 
-    def close(self):
+    def close(self) -> None:
         pass
