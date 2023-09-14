@@ -1,6 +1,10 @@
 Changelog (nionswift-video-capture)
 ===================================
 
+2.6.0 (2023-09-14)
+------------------
+- Update compatibility requirement for nionswift-instrumentation kit, nionswift.
+
 0.2.5 (2022-12-08)
 ------------------
 - Update compatibility requirement for instrumentation kit.
