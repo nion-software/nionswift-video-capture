@@ -1,6 +1,10 @@
 Changelog (nionswift-video-capture)
 ===================================
 
+2.6.1 (2024-06-18):
+-------------------
+- Swift 16.11 compatibility (no changes).
+
 2.6.0 (2023-09-14)
 ------------------
 - Update compatibility requirement for nionswift-instrumentation kit, nionswift.
