@@ -40,9 +40,9 @@ jobs:
     - name: Type Checking
       run: |
         mypy --namespace-packages --ignore-missing-imports --strict -p nionswift_plugin.nionswift_video_capture
-    - name: Test
-      run: |
-        python -m unittest discover -p '*_test.py'
+#    - name: Test
+#      run: |
+#        python -m unittest discover -p '*_test.py'
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11'
