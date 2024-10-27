@@ -1,6 +1,10 @@
 Changelog (nionswift-video-capture)
 ===================================
 
+2.7.0 (2024-10-27):
+-------------------
+- Require Numpy 2. Add Python 3.13 support. Drop Python 3.9, 3.10 support.
+
 2.6.1 (2024-06-18):
 -------------------
 - Swift 16.11 compatibility (no changes).
