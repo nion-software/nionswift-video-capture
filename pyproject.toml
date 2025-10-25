@@ -2,6 +2,32 @@
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[project]
+name = "nionswift-video-capture"
+version = "2.7.1"
+authors = [
+    { name = "Nion Software", email = "swift@nion.com" }
+]
+description = "Capture video from built-in camera using OpenCV."
+readme = "README.rst"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14"
+]
+urls = { "Homepage" = "https://github.com/nion-software/nionui" }
+dependencies = [
+  "nionswift-instrumentation >=23.4,<24.0",
+  "nionswift >=16.16,<17.0"
+]
+
+[tool.setuptools.packages.find]
+include = ["nionswift_plugin", "nionswift_plugin.nionswift_video_capture"]
+
 [tool.pytest.ini_options]
 testpaths = [
     "nionswift_plugin/nionswift_video_capture/test"
