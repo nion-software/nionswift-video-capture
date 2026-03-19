@@ -1,6 +1,10 @@
 Changelog (nionswift-video-capture)
 ===================================
 
+2.7.2 (2026-03-19)
+------------------
+- Python 3.14 support.
+
 2.7.1 (2025-06-02)
 ------------------
 - Maintenance release.

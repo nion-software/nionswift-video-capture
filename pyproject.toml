@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nionswift-video-capture"
-version = "2.7.1"
+version = "2.7.2"
 authors = [
     { name = "Nion Software", email = "swift@nion.com" }
 ]
